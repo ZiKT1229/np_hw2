@@ -22,7 +22,6 @@ void *recv_other(void *arg) {
 }
 
 int main(int argc, char **argv) {
-
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket");
@@ -48,13 +47,14 @@ int main(int argc, char **argv) {
     if (name[strlen(name) - 1] == '\n') {
         name[strlen(name) - 1] = '\0'; 
     }
+
     ret = send(sockfd, name, strlen(name), 0);
     if (ret < 0) {
         perror("send");
         return -1;
     }
 
-    pthread_t tid;
+    pthread_t tid; //負責接收訊息
     ret = pthread_create(&tid,NULL,recv_other,NULL);
     if (ret < 0) {
         perror("pthread_create");
@@ -66,6 +66,7 @@ int main(int argc, char **argv) {
         if (buf[strlen(buf) - 1] == '\n') {
             buf[strlen(buf) - 1] = '\0'; 
         }
+        
         ret = send(sockfd, buf, strlen(buf), 0);
         if (ret < 0) {
             perror("send");

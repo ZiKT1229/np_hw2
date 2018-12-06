@@ -23,20 +23,20 @@ void *broadcast(void *indexp) {
     char buf_snd[255] = {};
 
     char name[20] = {}; //username
-    int ret = recv(confd[index], name, sizeof(name), 0);
+    int ret = recv(confd[index], name, sizeof(name), 0); //接收訊息
     if(ret < 0) {
         perror("recv");
         close(confd[index]);
         return;
     }
 
-    strcpy(people[index], name);
+    strcpy(people[index], name); //存放進來的username
 
     while (1) {
         bzero(buf_rcv, sizeof(buf_rcv));
         recv(confd[index], buf_rcv, sizeof(buf_rcv),0);
 
-        if(strcmp("quit", buf_rcv) == 0) {
+        if(strcmp("quit", buf_rcv) == 0) { //離開聊天室
             sprintf(buf_snd, "%s leave the chatroom", name);
             for(int i = 0; i <= count; i++) {
                 if(index == i || confd[i] == 0) {
@@ -46,12 +46,38 @@ void *broadcast(void *indexp) {
             }
             confd[index] = -1;
             pthread_exit(0);
-        } else if (strcmp("who", buf_rcv) == 0) {
-            for(int i = 0; i <= count; i++) {
-                
+        } else if (strcmp("who", buf_rcv) == 0) { //查看線上user
+            char allName[200] = {};
+            for(int i = 0; i < count; i++) {
+                if (i > 0) {
+                    strcat(allName, ", ");
+                }
+                strcat(allName, people[i]);
             }
-            sprintf(buf_snd, "%s:%s", name, buf_rcv);
-        } else {
+            sprintf(buf_snd, "Current user: %s", allName);
+            send(confd[index], buf_snd, strlen(buf_snd), 0);
+        } else if (strncmp("to", buf_rcv, 2) == 0) { //傳送訊息給指定對象
+            char * pch;
+            pch = strtok (buf_rcv," ");
+            pch = strtok (NULL, " ");
+            char target[20] = {};
+            strcpy(target, pch);
+            pch = strtok (NULL, " ");
+            char msg[255] = {};
+            while (pch != NULL) {
+                strcat(msg, pch);
+                strcat(msg, " ");
+                pch = strtok (NULL, " ");
+            }
+            sprintf(buf_snd, "%s:%s", name, msg);
+            printf("to %s:%s\n", target, msg);
+            for(int i = 0; i < count; i++) {
+                if (strcmp(target, people[i]) == 0) {
+                    send(confd[i], buf_snd, strlen(buf_snd), 0);
+                    break;
+                }
+            }
+        } else { //傳送訊息給所有人
             sprintf(buf_snd, "%s:%s", name, buf_rcv);
             printf("%s\n", buf_snd);
 
@@ -62,13 +88,11 @@ void *broadcast(void *indexp) {
                 send(confd[i], buf_snd, sizeof(buf_snd), 0);
             }
         }
-
+        memset(buf_snd, '\0', 255);
     }
 }
 
 int main(int argc, char **argv) {
-    printf("Chat room is running~\n");
-
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket");
@@ -91,6 +115,7 @@ int main(int argc, char **argv) {
 
     int index = 0;
 
+    printf("Chat room is running~\n");
     while (count <= 10) {
         confd[count] = accept(sockfd, (sockaddrp)&src_addr[count], &src_len);
         ++count;
